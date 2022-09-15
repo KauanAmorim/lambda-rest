@@ -1,0 +1,78 @@
+service: lambda-rest
+
+frameworkVersion: '3'
+
+plugins:
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+
+  # you can overwrite defaults here
+  stage: dev
+  region: us-east-1
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+          Resource: arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/employee
+
+functions:
+  getEmployees:
+    handler: handler.getEmployees
+    events:
+      - http:
+          path: /employees
+          method: get
+
+  getEmployee:
+    handler: handler.getEmployee
+    events:
+      - http:
+          path: /employees/{employee_id}
+          method: get
+
+  createEmployee:
+    handler: handler.createEmployee
+    events:
+      - http:
+          path: /employees
+          method: post
+
+  updateEmployee:
+    handler: handler.updateEmployee
+    events:
+      - http:
+          path: /employees/{employee_id}
+          method: put
+
+  deleteEmployee:
+    handler: handler.deleteEmployee
+    events:
+      - http:
+          path: /employees/{employee_id}
+          method: delete
+
+resources:
+  Resources:
+    EmployeeTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: employee
+        AttributeDefinitions:
+          - AttributeName: employee_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: employee_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1

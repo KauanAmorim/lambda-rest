@@ -1,0 +1,17 @@
+{
+  "name": "lambda-rest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1216.0",
+    "serverless-offline": "^10.0.2",
+    "uuid": "^9.0.0"
+  }
+}
