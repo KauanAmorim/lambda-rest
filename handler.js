@@ -1,186 +1,61 @@
 'use strict';
 
-const patients = [
-  { id: 1, name: 'Maria', birthdate: '1984-11-01' },
-  { id: 2, name: 'John', birthdate: '1987-11-01' },
-  { id: 3, name: 'Jose', birthdate: '1987-11-01' },
-]
-
-const AWS = require('aws-sdk')
-const { v4: uuidv4} = require('uuid')
-
-const dynamoDb = new AWS.DynamoDB.DocumentClient()
-const params = {
-  TableName: "employee"
-}
+const { handleError } = require('./helper');
+const createService = require('./services/create.service');
+const deleteService = require('./services/delete.service');
+const readService = require('./services/read.service');
+const updateService = require('./services/update.service');
 
 module.exports.getEmployees = async (event) => {
   try { 
-    let data = await dynamoDb.scan(params).promise()
-    return {
-      statusCode: 200,
-      body: JSON.stringify(data.Items),
-    };
+    const data = await readService.getEmployees()
+    return { statusCode: 200, body: data };
   } catch (err) {
-    console.log("Error", err)
-    const statusCode = err.statusCode ? err.statusCode : 500
-    const error = err.name ? err.name : 'Exception'
-    const message = err.message ? err.message : 'Unknown error'
-
-    return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: error,
-        message: message
-      })
-    };
+    handleError(err);
   }
 };
 
 module.exports.getEmployee = async (event) => {
   try {
-    const { employee_id } = event.pathParameters
-    const data = await dynamoDb.get({
-      ...params,
-      Key: { employee_id: employee_id }
-    }).promise()
+    const data = await readService.getEmployee(event)
 
-    if(!data.Item) {
+    if (Object.keys(data).length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({ error: 'Employee not found' }, null, 2)
       }
     }
 
-    const employee = data.Item
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify(employee, null, 2),
-    }
-
+    return { statusCode: 200, body: JSON.stringify(data.Item) }
   } catch (err) {
-    console.log("Error", err)
-    const statusCode = err.statusCode ? err.statusCode : 500
-    const error = err.name ? err.name : 'Exception'
-    const message = err.message ? err.message : 'Unknown error'
-
-    return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: error,
-        message: message
-      })
-    };
+    handleError(err);
   }
 };
 
 module.exports.createEmployee = async (event) => {
   try {
-    const timestamp = new Date().getTime();
-
-    const data = JSON.parse(event.body);
-    const { em_name, em_age, em_role } = data
-
-    const employee = {
-      employee_id: uuidv4(), 
-      em_name,
-      em_age, 
-      em_role,
-      created_at: timestamp,
-      update_at: timestamp,
-    };
-
-    const create_data = { TableName: "employee", Item: employee };
-    await dynamoDb.put(create_data).promise()
-
+    await createService.createEmployee(event)
     return { statusCode: 201 };
   } catch (err) {
-    console.log("Error", err)
-    const statusCode = err.statusCode ? err.statusCode : 500
-    const error = err.name ? err.name : 'Exception'
-    const message = err.message ? err.message : 'Unknown error'
-
-    return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: error,
-        message: message
-      })
-    };
+    return handleError(err);
   }
 };
 
 module.exports.updateEmployee = async (event) => {
-  const { employee_id } = event.pathParameters
-
   try {
-    const timestamp = new Date().getTime();
-    const data = JSON.parse(event.body);
-    const { em_name, em_age, em_role } = data;
-
-    await dynamoDb.update({
-      ...params,
-      Key: { employee_id: employee_id },
-      UpdateExpression: 'SET em_name = :name, em_age = :age, em_role = :role, update_at = :update_at',
-      ConditionExpression: 'attribute_exists(employee_id)',
-      ExpressionAttributeValues: { ':name': em_name, ':age': em_age, ':role': em_role, ':update_at': timestamp }
-    }).promise()
-
+    await updateService.updateEmployee(event)
     return { statusCode: 204 };
-
   } catch (err) {
-    console.log("Error", err)
-    const statusCode = err.statusCode ? err.statusCode : 500
-    const error = err.name ? err.name : 'Exception'
-    const message = err.message ? err.message : 'Unknown error'
-
-    if(error == 'ConditionalCheckFailedException') {
-      error = 'Employee not found'
-      message = `Employee with ID ${employee_id} was not found to update`
-      statusCode = 404
-    }
-
-    return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: error,
-        message: message
-      })
-    };
+    handleError(err);
   }
 };
 
 module.exports.deleteEmployee = async (event) => {
-  const { employee_id } = event.pathParameters
-
   try {
-    await dynamoDb.delete({
-      ...params,
-      Key: { employee_id: employee_id },
-      ConditionExpression: 'attribute_exists(employee_id)'
-    }).promise()
-
+    await deleteService.deleteEmployee(event)
     return { statusCode: 204 }
   } catch (err) {
-    console.log("Error", err)
-    const statusCode = err.statusCode ? err.statusCode : 500
-    const error = err.name ? err.name : 'Exception'
-    const message = err.message ? err.message : 'Unknown error'
-
-    if(error == 'ConditionalCheckFailedException') {
-      error = 'Employee not found'
-      message = `Employee with ID ${employee_id} was not found to update`
-      statusCode = 404
-    }
-
-    return {
-      statusCode: statusCode,
-      body: JSON.stringify({
-        error: error,
-        message: message
-      })
-    };
+    handleError(err);
   }
 };
 
